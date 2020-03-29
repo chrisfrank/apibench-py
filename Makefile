@@ -17,4 +17,7 @@ flask:
 starlette:
 	venv/bin/gunicorn -k uvicorn.workers.UvicornWorker bench_starlette:app
 
-.PHONY: bench install flask starlette
+go:
+	go run bench_golang.go
+
+.PHONY: bench install flask starlette go

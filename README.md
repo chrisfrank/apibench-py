@@ -3,7 +3,7 @@ APIBench
 
 This repo benchmarks an `asyncio`-based ASGI app (powered by
 [Starlette][starlette]) against a traditional WSGI app (powered by
-[Flask][flask]).
+[Flask][flask]). It also includes a version in Go, for reference.
 
 My read of the results is that while ASGI is much more efficient for trivial
 tasks, the performance gap narrows considerably for tasks reading from a
@@ -17,6 +17,7 @@ database and responding with JSON.
 |-----------|-------|---------------|---------------|---------------|
 | Flask     | 960   | 50ms          | 52ms          | 56ms          |
 | Starlette | 5789  | 8ms           | 10ms          | 11ms          |
+| Golang    | 7797  | 6ms           | 7ms           | 8ms           |
 
 
 ### When hitting external APIs, Starlette is faster at p80, but slower at p90.
@@ -25,6 +26,7 @@ database and responding with JSON.
 |-----------|-------|---------------|---------------|----------------|
 | Flask     | 268   | 152ms         | 206ms         | 227ms          |
 | Starlette | 302   | 42ms          | 108ms         | 403ms          |
+| Golang    | 924   | 36ms          | 49ms          | 60ms           |
 
 ### When connecting directly to a database, Starlette and Flask perform comparably.
 
@@ -37,7 +39,7 @@ nearly 2x. This may just be a quirk of SQLite.
 | Flask             | 690   | 71ms          | 74ms          | 75ms           |
 | Starlette (async) | 712   | 69ms          | 75ms          | 79ms           |
 | Starlette (sync)  | 1388  | 35ms          | 38ms          | 42ms           |
-
+| Golang            | 4120  | 11ms          | 13ms          | 15ms           |
 
 
 ## Run it yourself
@@ -46,7 +48,7 @@ nearly 2x. This may just be a quirk of SQLite.
 2. Install dependencies:  
    `make install`
 3. In new shell, start the app you'd like to measure:  
-   `make starlette` or `make flask`
+   `make starlette` or `make flask` or `make go`
 4. In your original shell, benchmark the app:  
    `make bench`
 
@@ -352,6 +354,150 @@ Percentage of the requests served within a certain time (ms)
  100%     62 (longest request)
  ```
 
+### Golang (for reference)
+```
+Go (http.NewServeMux)
+
+ BENCH SANS I/O 
+
+ab -c 50 -n 1000 -q 127.0.0.1:8000/hi
+This is ApacheBench, Version 2.3 <$Revision: 1826891 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking 127.0.0.1 (be patient).....done
+
+
+Server Software:
+Server Hostname:        127.0.0.1
+Server Port:            8000
+
+Document Path:          /hi
+Document Length:        18 bytes
+
+Concurrency Level:      50
+Time taken for tests:   0.128 seconds
+Complete requests:      1000
+Failed requests:        0
+Total transferred:      126000 bytes
+HTML transferred:       18000 bytes
+Requests per second:    7797.21 [#/sec] (mean)
+Time per request:       6.413 [ms] (mean)
+Time per request:       0.128 [ms] (mean, across all concurrent requests)
+Transfer rate:          959.42 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    3   0.9      3       6
+Processing:     0    3   0.9      3       8
+Waiting:        0    2   0.9      2       6
+Total:          1    6   1.2      6      10
+
+Percentage of the requests served within a certain time (ms)
+  50%      6
+  66%      7
+  75%      7
+  80%      7
+  90%      8
+  95%      9
+  98%      9
+  99%      9
+ 100%     10 (longest request)
+
+
+ BENCH HTTP I/O 
+
+ab -c 50 -n 1000 -q 127.0.0.1:8000/users
+This is ApacheBench, Version 2.3 <$Revision: 1826891 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking 127.0.0.1 (be patient).....done
+
+
+Server Software:
+Server Hostname:        127.0.0.1
+Server Port:            8000
+
+Document Path:          /users
+Document Length:        5645 bytes
+
+Concurrency Level:      50
+Time taken for tests:   1.082 seconds
+Complete requests:      1000
+Failed requests:        0
+Total transferred:      5733000 bytes
+HTML transferred:       5645000 bytes
+Requests per second:    924.16 [#/sec] (mean)
+Time per request:       54.103 [ms] (mean)
+Time per request:       1.082 [ms] (mean, across all concurrent requests)
+Transfer rate:          5174.03 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    2   1.6      1      13
+Processing:    19   38  12.8     35     232
+Waiting:       18   38  12.5     34     219
+Total:         19   40  13.2     36     233
+
+Percentage of the requests served within a certain time (ms)
+  50%     36
+  66%     42
+  75%     46
+  80%     49
+  90%     60
+  95%     63
+  98%     64
+  99%     67
+ 100%    233 (longest request)
+
+
+ BENCH DB I/O 
+
+ab -c 50 -n 1000 -q 127.0.0.1:8000/posts
+This is ApacheBench, Version 2.3 <$Revision: 1826891 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking 127.0.0.1 (be patient).....done
+
+
+Server Software:
+Server Hostname:        127.0.0.1
+Server Port:            8000
+
+Document Path:          /posts
+Document Length:        12614 bytes
+
+Concurrency Level:      50
+Time taken for tests:   0.243 seconds
+Complete requests:      1000
+Failed requests:        0
+Total transferred:      12702000 bytes
+HTML transferred:       12614000 bytes
+Requests per second:    4120.58 [#/sec] (mean)
+Time per request:       12.134 [ms] (mean)
+Time per request:       0.243 [ms] (mean, across all concurrent requests)
+Transfer rate:          51112.96 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    4   1.1      3       8
+Processing:     1    8   1.8      8      18
+Waiting:        1    5   1.4      4      15
+Total:          6   12   2.0     11      22
+
+Percentage of the requests served within a certain time (ms)
+  50%     11
+  66%     12
+  75%     13
+  80%     13
+  90%     15
+  95%     16
+  98%     17
+  99%     18
+ 100%     22 (longest request)
+ ```
 
 
 [starlette]: https://www.starlette.io/
